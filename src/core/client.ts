@@ -155,4 +155,3 @@ const operation = new GraphiClient([executeHook]).compose(
 );
 
 operation.execute();
-operation.execute();
