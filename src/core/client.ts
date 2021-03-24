@@ -22,19 +22,17 @@ export class GraphiOperation {
       return await hook(acc, { updateResult: this.updateResult });
     }, Promise.resolve(dto));
 
-      dto.result = await dto.makeRequest();
+    const requestResult = await dto.makeRequest();
 
-      dto = await dto.afterRequestHooks.reduce(async (acc, hook) => {
-        return await hook(acc);
-      }, Promise.resolve(dto));
-  
-      dto.result = await dto.serializeResultHooks.reduce(async (acc, hook) => {
-        return await hook(acc, dto, { updateResult: this.updateResult });
-      }, Promise.resolve(dto.result));
+    await dto.afterRequestHooks.map(async (hook) => {
+      await hook(dto, requestResult);
+    });
 
-    GraphiOperation.updateResult(dto, dto.result);
+    const result = await dto.serializeResultHooks.reduce(async (acc, hook) => {
+      return await hook(acc, dto, { updateResult: this.updateResult });
+    }, Promise.resolve(dto.result));
 
-    return GraphiOperation.updateResult(dto.result, dto.result);
+    return GraphiOperation.updateResult(result, dto.result);
   }
 
   public static updateResult(dto: any, result: any) {
@@ -90,6 +88,14 @@ function beforeRequest(func: Function): any {
   }
 }
 
+function afterRequest(func: Function): any {
+  return (dto:  GraphiOperationDTO) => {
+    return GraphiOperationDTO.addAfterRequestHooks(dto, (result) => { 
+      func(result)
+     });
+  }
+}
+
 function onResultUpdated(func: Function): any {
   return (dto:  GraphiOperationDTO) => {
     return GraphiOperationDTO.addOnResultUpdatedHook(dto, () => { func(dto) });
@@ -106,7 +112,7 @@ function onSuccess(func: Function): any {
   const currentResult = null;
 
   return (dto:  GraphiOperationDTO) => {
-    return GraphiOperationDTO.addOnResultUpdatedHook(dto, (result) => { 
+    return GraphiOperationDTO.addAfterRequestHooks(dto, (result) => { 
       if (!currentResult) {
         func(result)
       }
@@ -128,18 +134,21 @@ function refreshInterval(interval: number): any {
 
 function useCache(opts: any): any {
   return (dto: GraphiOperationDTO) => {
-    return GraphiOperationDTO.addAfterRequestHooks(dto, () => { 
-      timer = setTimeout(() => {
-        GraphiOperation._execute(dto);
-      }, interval);
+    return GraphiOperationDTO.addBeforeRequestHooks(dto, (_, { updateResult }) => { 
+      if (opts.initialData) {
+        updateResult({});
+      }
     });
   }
 }
 
+let loading = false;
+
 const operation = new GraphiClient([executeHook]).compose(
   useCache({ initialData: true }),
   refreshInterval(10000),
-  beforeRequest(() => { alert('loading') }),
+  beforeRequest(() => { loading = true; }),
+  afterRequest(() => { loading = false; }),
   onResultUpdated(() => alert()),
   onSuccess(() => alert('done')),
   onError(() => alert()),
