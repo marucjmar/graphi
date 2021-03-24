@@ -36,6 +36,20 @@ const query = gql`query asd {
 ## Scallable hooks
 
 ```ts
+function afterRequest(func: Function): any {
+  return (dto:  GraphiOperationDTO) => {
+    return GraphiOperationDTO.addAfterRequestHooks(dto, (result) => { 
+      func(result)
+     });
+  }
+}
+
+function onResultUpdated(func: Function): any {
+  return (dto:  GraphiOperationDTO) => {
+    return GraphiOperationDTO.addOnResultUpdatedHook(dto, () => { func(dto) });
+  }
+}
+
 let loading = false;
 let posts = false;
 const client = new GraphiClient([executeHook]);
