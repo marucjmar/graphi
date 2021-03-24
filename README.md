@@ -50,6 +50,14 @@ function onResultUpdated(func: Function): any {
   }
 }
 
+function executeHook(dto: GraphiOperationDTO): any {
+  dto.makeRequest = async () => {
+    return xhr.foo(dto.uri)
+  }
+
+  return dto;
+}
+
 let loading = false;
 let posts = false;
 const client = new GraphiClient([executeHook]);
