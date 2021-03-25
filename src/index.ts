@@ -1,1 +1,3 @@
-console.log('xD')
+console.log("xD");
+
+import "./dummy/index";
